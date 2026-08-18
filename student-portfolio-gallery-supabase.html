@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHOWREEL 2026 / 학생 포트폴리오 갤러리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0a0a0d;
+    --bg-elevated:#131318;
+    --bg-card:#17171d;
+    --line:#232329;
+    --text-primary:#f5f3f0;
+    --text-muted:#8a8a94;
+    --cyan:#00e5ff;
+    --magenta:#ff2e88;
+    --amber:#ffc93c;
+    --green:#5cf29a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:'';
+    position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -5%, rgba(255,46,136,0.14), transparent 60%),
+      radial-gradient(ellipse 900px 600px at 85% 10%, rgba(0,229,255,0.12), transparent 60%);
+    pointer-events:none; z-index:0;
+  }
+  h1,h2,h3,.display{ font-family:'Space Grotesk', sans-serif; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  a{color:inherit; text-decoration:none;}
+  button{font-family:inherit; cursor:pointer;}
+  :focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+
+  /* ---------- Config banner ---------- */
+  .config-banner{
+    background:#3a1f10; border-bottom:1px solid #6b3a1a; color:#ffd9b3;
+    font-size:13px; padding:10px 20px; text-align:center; position:relative; z-index:110;
+    display:none; line-height:1.5;
+  }
+  .config-banner code{ background:rgba(0,0,0,0.25); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; }
+
+  /* ---------- Playhead scrub line ---------- */
+  .scrub-track{
+    position:fixed; top:0; left:0; right:0; height:3px; z-index:100;
+    background:var(--line);
+  }
+  .scrub-fill{
+    height:100%; width:0%;
+    background:linear-gradient(90deg, var(--magenta), var(--cyan), var(--amber));
+    transition:width .2s linear;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky; top:3px; z-index:90;
+    background:rgba(10,10,13,0.85);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .header-inner{
+    max-width:1280px; margin:0 auto; padding:18px 32px;
+    display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;
+  }
+  .logo{ display:flex; align-items:baseline; gap:8px; }
+  .logo .mark{ font-size:22px; font-weight:700; letter-spacing:-0.02em; }
+  .logo .mark span{ color:var(--magenta); }
+  .logo .tag{ font-size:11px; color:var(--text-muted); letter-spacing:0.08em; }
+  .header-actions{ display:flex; align-items:center; gap:14px; }
+  .current-user{
+    display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .current-user .cu-avatar{
+    width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:11px; color:#0a0a0d;
+  }
+  .btn{
+    border:none; border-radius:8px; padding:10px 18px;
+    font-size:13px; font-weight:600; letter-spacing:0.01em;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{ transform:translateY(-1px); }
+  .btn-primary{
+    background:linear-gradient(90deg, var(--magenta), #ff5f9e);
+    color:#0a0a0d;
+  }
+  .btn-primary:hover{ box-shadow:0 6px 22px rgba(255,46,136,0.35); }
+  .btn-ghost{
+    background:transparent; color:var(--text-primary);
+    border:1px solid var(--line);
+  }
+  .btn-ghost:hover{ border-color:var(--cyan); color:var(--cyan); }
+  .btn-small{ padding:7px 14px; font-size:12px; border-radius:7px; }
+  .btn-danger{
+    background:transparent; color:#ff8fbd; border:1px solid rgba(255,46,136,0.35);
+  }
+  .btn-danger:hover{ background:rgba(255,46,136,0.1); }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; transform:none !important; }
+
+  main{ position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:0 32px 100px; }
+  .view{ display:none; animation:fadeIn .35s ease; }
+  .view.active{ display:block; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ---------- Hero ---------- */
+  .hero{ padding:64px 0 40px; }
+  .hero .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--cyan);
+    letter-spacing:0.12em; margin-bottom:18px; display:flex; align-items:center; gap:10px;
+  }
+  .hero .eyebrow::before{
+    content:''; width:8px; height:8px; border-radius:50%;
+    background:var(--magenta); box-shadow:0 0 12px var(--magenta);
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  .hero h1{
+    font-size:clamp(36px, 6vw, 68px); line-height:1.2; font-weight:700; letter-spacing:-0.03em;
+    max-width:820px; word-break:keep-all;
+  }
+  .hero h1 .grad{
+    background:linear-gradient(90deg, var(--magenta), var(--amber));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero p{ margin-top:20px; color:var(--text-muted); font-size:16px; max-width:520px; line-height:1.6; }
+  .hero-stats{ display:flex; gap:36px; margin-top:36px; flex-wrap:wrap; }
+  .hstat .num{ font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:700; }
+  .hstat .label{ font-size:12px; color:var(--text-muted); margin-top:2px; }
+
+  /* ---------- Filter bar ---------- */
+  .filter-bar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:18px 0; margin-top:8px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  }
+  .filter-bar .flabel{ font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; margin-right:6px; }
+  .chip{
+    padding:7px 13px; border-radius:20px; font-size:12.5px; font-weight:500;
+    border:1px solid var(--line); background:var(--bg-elevated); color:var(--text-muted);
+    transition:all .15s ease;
+  }
+  .chip:hover{ color:var(--text-primary); border-color:#3a3a44; }
+  .chip.active{ color:#0a0a0d; border-color:transparent; }
+
+  /* tool color mapping */
+  .tool-Docu{ --tc:var(--magenta); }
+  .tool-CM{ --tc:var(--cyan); }
+  .tool-Motion-Graphics{ --tc:#b18cff; }
+  .tool-C4D{ --tc:var(--amber); }
+  .tool-기타{ --tc:#8a8a94; }
+  .chip.active[data-tool="all"]{ background:linear-gradient(90deg, var(--magenta), var(--cyan), var(--amber)); }
+  .chip.active[data-tool="Docu"]{ background:var(--magenta); }
+  .chip.active[data-tool="CM"]{ background:var(--cyan); }
+  .chip.active[data-tool="Motion Graphics"]{ background:#b18cff; }
+  .chip.active[data-tool="C4D"]{ background:var(--amber); }
+  .chip.active[data-tool="기타"]{ background:#8a8a94; }
+
+  /* ---------- Gallery grid ---------- */
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:22px; margin-top:32px;
+  }
+  .card{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:14px;
+    overflow:hidden; cursor:pointer; transition:transform .2s ease, border-color .2s ease;
+    display:flex; flex-direction:column; position:relative;
+  }
+  .card:hover{ transform:translateY(-4px); border-color:#33333c; }
+  .thumb{
+    position:relative; aspect-ratio:16/9; overflow:hidden;
+    background:var(--bg-elevated);
+  }
+  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb .thumb-fallback{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; text-align:center; padding:16px;
+    color:rgba(245,243,240,0.85);
+  }
+  .thumb .scan{
+    position:absolute; inset:0; opacity:0; transition:opacity .25s ease;
+    background:linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 100%);
+  }
+  .card:hover .scan{ opacity:1; }
+  .thumb .duration{
+    position:absolute; bottom:8px; right:8px; font-family:'JetBrains Mono',monospace;
+    font-size:11px; background:rgba(0,0,0,0.65); padding:3px 7px; border-radius:5px;
+  }
+  .thumb .play-hint{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity .2s ease;
+  }
+  .card:hover .play-hint{ opacity:1; }
+  .play-hint svg{ width:38px; height:38px; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
+  .card-body{ padding:16px; display:flex; flex-direction:column; gap:8px; flex:1; }
+  .card-body .ctitle{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15.5px; line-height:1.3; }
+  .card-body .cauthor{ font-size:12.5px; color:var(--text-muted); }
+  .card-body .cauthor:hover{ color:var(--cyan); }
+  .tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:2px; }
+  .tag-pill{
+    font-size:10.5px; font-family:'JetBrains Mono',monospace; padding:3px 8px; border-radius:5px;
+    background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--line);
+  }
+  /* waveform scrub signature bar */
+  .waveform{
+    display:flex; align-items:flex-end; gap:2px; height:20px; margin-top:auto; padding-top:10px;
+  }
+  .waveform span{
+    flex:1; background:var(--tc, var(--cyan)); opacity:0.35; border-radius:1px;
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .card:hover .waveform span{ opacity:0.95; }
+
+  /* owner controls on a card */
+  .card-owner-controls{
+    position:absolute; top:8px; left:8px; display:flex; gap:6px; z-index:2;
+  }
+  .icon-btn{
+    width:28px; height:28px; border-radius:7px; border:1px solid rgba(255,255,255,0.15);
+    background:rgba(10,10,13,0.75); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center; color:var(--text-primary);
+    font-size:13px;
+  }
+  .icon-btn:hover{ border-color:var(--cyan); color:var(--cyan); }
+  .icon-btn.danger:hover{ border-color:var(--magenta); color:var(--magenta); }
+
+  /* ---------- Empty state ---------- */
+  .empty{
+    text-align:center; padding:80px 20px; border:1px dashed var(--line); border-radius:16px; margin-top:32px;
+  }
+  .empty h3{ font-size:20px; margin-bottom:8px; }
+  .empty p{ color:var(--text-muted); font-size:14px; margin-bottom:22px; }
+
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted);
+    margin-bottom:18px; font-family:'JetBrains Mono',monospace;
+  }
+  .back-link:hover{ color:var(--cyan); }
+
+  /* ---------- Forms ---------- */
+  .form-wrap{ max-width:640px; margin:0 auto; padding:50px 0 60px; }
+  .form-wrap h2{ font-size:30px; margin-bottom:6px; }
+  .form-wrap .sub{ color:var(--text-muted); font-size:14px; margin-bottom:32px; }
+  .field{ margin-bottom:20px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:8px; color:var(--text-primary); }
+  .field .hint{ font-size:11.5px; color:var(--text-muted); margin-top:6px; }
+  .field input, .field textarea, .field select{
+    width:100%; background:var(--bg-elevated); border:1px solid var(--line); border-radius:9px;
+    padding:12px 14px; color:var(--text-primary); font-family:'Inter',sans-serif; font-size:14px;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{ border-color:var(--cyan); }
+  .field textarea{ resize:vertical; min-height:90px; }
+  .field input[type="file"]{ padding:9px 14px; font-size:13px; }
+  .tool-select{ display:flex; gap:8px; flex-wrap:wrap; }
+  .tool-select .chip{ cursor:pointer; user-select:none; }
+  .form-actions{ display:flex; gap:12px; margin-top:28px; }
+  .form-error{
+    background:rgba(255,46,136,0.08); border:1px solid rgba(255,46,136,0.3); color:#ff8fbd;
+    padding:11px 14px; border-radius:9px; font-size:13px; margin-bottom:18px; display:none;
+  }
+  .form-note{
+    background:rgba(0,229,255,0.06); border:1px solid rgba(0,229,255,0.25); color:#9fefff;
+    padding:11px 14px; border-radius:9px; font-size:12.5px; margin-bottom:18px; display:none;
+  }
+  .auth-switch{ margin-top:16px; font-size:13px; color:var(--text-muted); }
+  .auth-switch a{ color:var(--cyan); }
+
+  /* ---------- Profile view ---------- */
+  .profile-head{
+    display:flex; align-items:center; gap:20px; padding:40px 0 20px; flex-wrap:wrap;
+  }
+  .avatar{
+    width:72px; height:72px; border-radius:16px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px; color:#0a0a0d;
+  }
+  .profile-head h2{ font-size:28px; }
+  .profile-head .bio{ color:var(--text-muted); font-size:14px; margin-top:6px; max-width:520px; line-height:1.5; }
+  .profile-meta{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-muted); margin-top:8px; }
+
+  /* ---------- Project detail ---------- */
+  .detail-wrap{ padding:36px 0 70px; max-width:900px; margin:0 auto; }
+  .video-embed{
+    position:relative; width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden;
+    background:var(--bg-elevated); border:1px solid var(--line);
+  }
+  .video-embed iframe{ width:100%; height:100%; border:0; }
+  .video-embed .no-video{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); font-size:13px; text-align:center; padding:20px;
+  }
+  .detail-title{ font-size:30px; margin-top:26px; }
+  .detail-meta{ display:flex; align-items:center; gap:14px; margin-top:12px; flex-wrap:wrap; }
+  .detail-desc{ margin-top:20px; color:var(--text-primary); line-height:1.75; font-size:15px; opacity:0.9; }
+  .timecode-strip{
+    display:flex; gap:18px; margin-top:26px; padding:14px 16px; background:var(--bg-elevated);
+    border:1px solid var(--line); border-radius:10px; font-family:'JetBrains Mono',monospace; font-size:11.5px;
+    color:var(--text-muted); flex-wrap:wrap;
+  }
+  .timecode-strip b{ color:var(--text-primary); }
+  .detail-owner-actions{ display:flex; gap:10px; margin-top:22px; }
+
+  footer{
+    border-top:1px solid var(--line); padding:30px 32px; margin-top:60px;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+    color:var(--text-muted); font-size:12px; position:relative; z-index:1;
+  }
+
+  @media (max-width:640px){
+    .header-inner{ padding:14px 18px; flex-wrap:wrap; }
+    main{ padding:0 18px 80px; }
+    .hero{ padding:40px 0 28px; }
+    .grid{ grid-template-columns:1fr 1fr; gap:14px; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="config-banner" id="configBanner">
+  ⚠ Supabase 연결이 아직 설정되지 않았습니다. 이 파일 하단의 <code>SUPABASE_URL</code> / <code>SUPABASE_ANON_KEY</code> 값을 본인의 Supabase 프로젝트 값으로 바꿔주세요.
+</div>
+
+<div class="scrub-track"><div class="scrub-fill" id="scrubFill"></div></div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <span class="mark">SHOWREEL <span>2026</span></span>
+      <span class="tag">STUDENT PORTFOLIO ARCHIVE</span>
+    </div>
+    <div class="header-actions" id="headerActions">
+      <!-- filled by JS depending on auth state -->
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===================== GALLERY VIEW ===================== -->
+  <section class="view active" id="view-gallery">
+    <div class="hero">
+      <div class="eyebrow">REC · LIVE ARCHIVE</div>
+      <h1>[AI Worker]<br>AI 기반 하이브리드 영상콘텐츠제작<br><span class="grad">전문가 양성과정</span></h1>
+      <p>교육을 통해 배운 지식과 기술을 이용해 학생들이 직접 만든<br>Portfolio를 한자리에서 확인하세요.</p>
+      <div class="hero-stats">
+        <div class="hstat"><div class="num mono" id="statProjects">0</div><div class="label">등록된 작품</div></div>
+        <div class="hstat"><div class="num mono" id="statStudents">0</div><div class="label">참여 학생</div></div>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <span class="flabel">FILTER /</span>
+      <button class="chip active" data-tool="all">전체</button>
+      <button class="chip" data-tool="Docu">Docu</button>
+      <button class="chip" data-tool="CM">CM</button>
+      <button class="chip" data-tool="Motion Graphics">Motion Graphics</button>
+      <button class="chip" data-tool="C4D">C4D</button>
+      <button class="chip" data-tool="기타">기타</button>
+    </div>
+
+    <div class="grid" id="galleryGrid"></div>
+    <div class="empty" id="galleryEmpty" style="display:none;">
+      <h3>아직 업로드된 작품이 없습니다</h3>
+      <p>로그인 후 첫 작품을 올려서 갤러리를 시작해보세요.</p>
+      <button class="btn btn-primary" id="emptyUploadBtn">첫 작품 업로드하기</button>
+    </div>
+  </section>
+
+  <!-- ===================== AUTH VIEW (로그인 / 회원가입) ===================== -->
+  <section class="view" id="view-auth">
+    <div class="form-wrap">
+      <a href="#" class="back-link" data-back="gallery">← 갤러리로 돌아가기</a>
+      <h2 id="authTitle">로그인</h2>
+      <p class="sub" id="authSub">이메일과 비밀번호로 로그인하세요.</p>
+      <div class="form-error" id="authFormError"></div>
+      <form id="authForm">
+        <div class="field" id="authNameField" style="display:none;">
+          <label for="authName">이름 *</label>
+          <input type="text" id="authName" placeholder="예: 김민준">
+        </div>
+        <div class="field">
+          <label for="authEmail">이메일 *</label>
+          <input type="email" id="authEmail" required>
+        </div>
+        <div class="field">
+          <label for="authPassword">비밀번호 *</label>
+          <input type="password" id="authPassword" required minlength="6" placeholder="6자 이상">
+        </div>
+        <div class="field" id="authBioField" style="display:none;">
+          <label for="authBio">한 줄 소개</label>
+          <textarea id="authBio" placeholder="예: 색보정과 모션그래픽에 관심 있는 영상연출 전공생입니다."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="authSubmitBtn">로그인</button>
+        </div>
+      </form>
+      <p class="auth-switch" id="authSwitch">계정이 없으신가요? <a href="#" id="authToggleLink">회원가입</a></p>
+    </div>
+  </section>
+
+  <!-- ===================== UPLOAD / EDIT VIEW ===================== -->
+  <section class="view" id="view-upload">
+    <div class="form-wrap">
+      <a href="#" class="back-link" data-back="gallery">← 갤러리로 돌아가기</a>
+      <h2 id="uploadHeading">작품 업로드</h2>
+      <p class="sub" id="uploadAsLabel">현재 프로필로 새 작품을 등록합니다.</p>
+      <div class="form-error" id="uploadFormError"></div>
+      <div class="form-note" id="uploadFormNote"></div>
+      <form id="uploadForm">
+        <div class="field">
+          <label for="upTitle">작품 제목 *</label>
+          <input type="text" id="upTitle" placeholder="예: 도시의 밤 — 컬러그레이딩 습작" required>
+        </div>
+        <div class="field">
+          <label for="upDesc">작품 설명</label>
+          <textarea id="upDesc" placeholder="어떤 작업을 했는지, 사용한 기법이나 컨셉을 적어주세요."></textarea>
+        </div>
+        <div class="field">
+          <label for="upVideo">영상 링크 (YouTube 또는 Vimeo)</label>
+          <input type="text" id="upVideo" placeholder="https://youtu.be/... 또는 https://vimeo.com/...">
+          <div class="hint">영상 파일은 유튜브·비메오에 올린 뒤 링크를 붙여넣어 주세요.</div>
+        </div>
+        <div class="field">
+          <label for="upThumbFile">썸네일 이미지 업로드 (선택)</label>
+          <input type="file" id="upThumbFile" accept="image/*">
+          <div class="hint">파일을 올리면 아래 URL 입력은 무시됩니다.</div>
+        </div>
+        <div class="field">
+          <label for="upThumb">또는 썸네일 이미지 URL</label>
+          <input type="text" id="upThumb" placeholder="https://...">
+        </div>
+        <div class="field">
+          <label for="upDuration">작품 길이 (선택)</label>
+          <input type="text" id="upDuration" placeholder="예: 02:41">
+        </div>
+        <div class="field">
+          <label>작품구분 (하나 이상 선택)</label>
+          <div class="tool-select" id="toolSelect">
+            <button type="button" class="chip" data-tool="Docu">Docu</button>
+            <button type="button" class="chip" data-tool="CM">CM</button>
+            <button type="button" class="chip" data-tool="Motion Graphics">Motion Graphics</button>
+            <button type="button" class="chip" data-tool="C4D">C4D</button>
+            <button type="button" class="chip" data-tool="기타">기타</button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="uploadSubmitBtn">작품 게시</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===================== STUDENT PROFILE VIEW ===================== -->
+  <section class="view" id="view-profile">
+    <a href="#" class="back-link" data-back="gallery" style="margin-top:24px;">← 갤러리로 돌아가기</a>
+    <div class="profile-head" id="profileHead"></div>
+    <div class="grid" id="profileGrid" style="margin-top:24px;"></div>
+    <div class="empty" id="profileEmpty" style="display:none;">
+      <h3>등록된 작품이 없습니다</h3>
+      <p>이 학생의 첫 작품이 곧 올라올 예정입니다.</p>
+    </div>
+  </section>
+
+  <!-- ===================== PROJECT DETAIL VIEW ===================== -->
+  <section class="view" id="view-detail">
+    <div class="detail-wrap">
+      <a href="#" class="back-link" data-back="gallery" style="margin-top:24px;">← 갤러리로 돌아가기</a>
+      <div class="video-embed" id="detailVideo"></div>
+      <h2 class="detail-title" id="detailTitle"></h2>
+      <div class="detail-meta">
+        <a href="#" class="cauthor mono" id="detailAuthor" style="font-size:13px;"></a>
+        <div class="tags" id="detailTags"></div>
+      </div>
+      <p class="detail-desc" id="detailDesc"></p>
+      <div class="timecode-strip">
+        <span>업로드일 <b id="detailDate"></b></span>
+        <span>길이 <b id="detailDuration"></b></span>
+      </div>
+      <div class="detail-owner-actions" id="detailOwnerActions" style="display:none;">
+        <button class="btn btn-ghost btn-small" id="detailEditBtn">수정하기</button>
+        <button class="btn btn-danger btn-small" id="detailDeleteBtn">삭제하기</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span>SHOWREEL 2026 — 학생 포트폴리오 아카이브</span>
+  <span class="mono" id="footerStatus">Supabase 연결 확인 중…</span>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     ⚙️ SUPABASE 설정 — 아래 두 값을 본인 프로젝트 값으로 바꿔주세요.
+     Supabase Dashboard → Project Settings → API 에서 확인할 수 있습니다.
+  ============================================================ */
+  const SUPABASE_URL = "https://sfnvwkgnwqcbfldlghri.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_p4IIBlxG5Vn5PrRHwzKuxQ_Ep2Y8zxg";
+  /* ============================================================ */
+
+  const isConfigured = !SUPABASE_URL.includes("YOUR-PROJECT-REF") && !SUPABASE_ANON_KEY.includes("YOUR-ANON-PUBLIC-KEY");
+  document.getElementById('configBanner').style.display = isConfigured ? 'none' : 'block';
+  document.getElementById('footerStatus').textContent = isConfigured ? 'Supabase에 연결됨' : 'Supabase 미설정 — 데모 데이터만 표시';
+
+  const supabase = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  /* ---------------- state ---------------- */
+  let students = [];
+  let projects = [];
+  let currentUser = null;   // supabase auth user
+  let currentProfile = null; // row from public.students
+  let authMode = 'login';   // 'login' | 'signup'
+  let editingProjectId = null;
+
+  const AVATAR_COLORS = ['#ff2e88','#00e5ff','#ffc93c','#5cf29a','#b18cff'];
+  function colorFor(id){
+    let hash = 0;
+    for(const ch of String(id)) hash = (hash*31 + ch.charCodeAt(0)) % 997;
+    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+  }
+  function initials(name){ return (name||'?').trim().slice(0,2).toUpperCase(); }
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function toolClass(tool){ return 'tool-' + String(tool).trim().replace(/\s+/g, '-'); }
+
+  function toEmbedUrl(url){
+    if(!url) return null;
+    url = url.trim();
+    let m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{6,})/);
+    if(m) return 'https://www.youtube.com/embed/' + m[1];
+    m = url.match(/vimeo\.com\/(\d+)/);
+    if(m) return 'https://player.vimeo.com/video/' + m[1];
+    return null;
+  }
+
+  /* ---------------- scrub progress bar (page scroll) ---------------- */
+  const scrubFill = document.getElementById('scrubFill');
+  window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    const pct = h.scrollTop / (h.scrollHeight - h.clientHeight || 1) * 100;
+    scrubFill.style.width = pct + '%';
+  });
+
+  /* ---------------- routing ---------------- */
+  const views = ['gallery','auth','upload','profile','detail'];
+  function showView(name, params){
+    views.forEach(v => document.getElementById('view-' + v).classList.toggle('active', v === name));
+    window.scrollTo({top:0, behavior:'smooth'});
+    if(name === 'profile') renderProfile(params.studentId);
+    if(name === 'detail') renderDetail(params.projectId);
+    if(name === 'gallery') renderGallery();
+    if(name === 'upload') renderUploadPrelude(params && params.editId);
+    if(name === 'auth') renderAuthView(params && params.mode);
+  }
+  document.querySelectorAll('[data-back]').forEach(el => {
+    el.addEventListener('click', e => { e.preventDefault(); showView('gallery'); });
+  });
+
+  /* ---------------- header ---------------- */
+  const headerActions = document.getElementById('headerActions');
+  function renderHeader(){
+    if(currentProfile){
+      const c = colorFor(currentProfile.id);
+      headerActions.innerHTML = `
+        <div class="current-user">
+          <span class="cu-avatar" style="background:${c}">${initials(currentProfile.name)}</span>
+          <span>${escapeHtml(currentProfile.name)}</span>
+        </div>
+        <button class="btn btn-ghost" id="myProfileBtn">내 포트폴리오</button>
+        <button class="btn btn-primary" id="uploadBtn">작품 업로드</button>
+        <button class="btn btn-ghost" id="logoutBtn">로그아웃</button>`;
+      document.getElementById('myProfileBtn').addEventListener('click', () => showView('profile', {studentId: currentProfile.id}));
+      document.getElementById('uploadBtn').addEventListener('click', () => showView('upload'));
+      document.getElementById('logoutBtn').addEventListener('click', doLogout);
+    } else {
+      headerActions.innerHTML = `<button class="btn btn-primary" id="loginBtn">로그인 / 회원가입</button>`;
+      document.getElementById('loginBtn').addEventListener('click', () => showView('auth', {mode:'login'}));
+    }
+  }
+
+  /* ---------------- data loading ---------------- */
+  async function loadData(){
+    if(!isConfigured){ renderGallery(); return; }
+    const [{data: sData, error: sErr}, {data: pData, error: pErr}] = await Promise.all([
+      supabase.from('students').select('*').order('created_at', {ascending:true}),
+      supabase.from('projects').select('*').order('created_at', {ascending:true})
+    ]);
+    if(sErr) console.error(sErr);
+    if(pErr) console.error(pErr);
+    students = sData || [];
+    projects = (pData || []).map(p => ({
+      id: p.id, studentId: p.student_id, title: p.title, description: p.description,
+      videoUrl: p.video_url, thumbnailUrl: p.thumbnail_url, duration: p.duration,
+      tools: p.tools || ['기타'], createdAt: p.created_at
+    }));
+    renderGallery();
+  }
+
+  /* ---------------- auth ---------------- */
+  async function initAuth(){
+    if(!isConfigured){ renderHeader(); return; }
+    const {data:{session}} = await supabase.auth.getSession();
+    if(session){
+      currentUser = session.user;
+      await loadCurrentProfile();
+    }
+    renderHeader();
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      currentUser = session ? session.user : null;
+      if(currentUser){ await loadCurrentProfile(); } else { currentProfile = null; }
+      renderHeader();
+    });
+  }
+  async function loadCurrentProfile(){
+    if(!currentUser) { currentProfile = null; return; }
+    const {data} = await supabase.from('students').select('*').eq('id', currentUser.id).maybeSingle();
+    currentProfile = data || null;
+  }
+  async function doLogout(){
+    if(supabase) await supabase.auth.signOut();
+    currentUser = null; currentProfile = null;
+    renderHeader();
+    showView('gallery');
+  }
+
+  function renderAuthView(mode){
+    authMode = mode || 'login';
+    const errBox = document.getElementById('authFormError');
+    errBox.style.display = 'none';
+    document.getElementById('authForm').reset();
+    const nameField = document.getElementById('authNameField');
+    const bioField = document.getElementById('authBioField');
+    if(authMode === 'signup'){
+      document.getElementById('authTitle').textContent = '회원가입';
+      document.getElementById('authSub').textContent = '이름, 이메일, 비밀번호로 학생 프로필을 만듭니다.';
+      document.getElementById('authSubmitBtn').textContent = '가입하고 시작하기';
+      document.getElementById('authSwitch').innerHTML = '이미 계정이 있으신가요? <a href="#" id="authToggleLink">로그인</a>';
+      nameField.style.display = 'block';
+      bioField.style.display = 'block';
+      document.getElementById('authName').required = true;
+    } else {
+      document.getElementById('authTitle').textContent = '로그인';
+      document.getElementById('authSub').textContent = '이메일과 비밀번호로 로그인하세요.';
+      document.getElementById('authSubmitBtn').textContent = '로그인';
+      document.getElementById('authSwitch').innerHTML = '계정이 없으신가요? <a href="#" id="authToggleLink">회원가입</a>';
+      nameField.style.display = 'none';
+      bioField.style.display = 'none';
+      document.getElementById('authName').required = false;
+    }
+    document.getElementById('authToggleLink').addEventListener('click', e => {
+      e.preventDefault();
+      renderAuthView(authMode === 'login' ? 'signup' : 'login');
+    });
+  }
+
+  document.getElementById('authForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const errBox = document.getElementById('authFormError');
+    errBox.style.display = 'none';
+    if(!isConfigured){
+      errBox.textContent = 'Supabase가 아직 설정되지 않았습니다. 파일 하단의 SUPABASE_URL / SUPABASE_ANON_KEY를 먼저 입력해주세요.';
+      errBox.style.display = 'block';
+      return;
+    }
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const submitBtn = document.getElementById('authSubmitBtn');
+    submitBtn.disabled = true;
+
+    try{
+      if(authMode === 'signup'){
+        const name = document.getElementById('authName').value.trim();
+        const bio = document.getElementById('authBio').value.trim();
+        if(!name){ throw new Error('이름을 입력해주세요.'); }
+        const {data, error} = await supabase.auth.signUp({email, password});
+        if(error) throw error;
+        if(!data.user) throw new Error('가입 요청은 완료됐지만 이메일 인증이 필요할 수 있습니다. 메일함을 확인해주세요.');
+        const {error: profileErr} = await supabase.from('students').insert({id: data.user.id, name, bio});
+        if(profileErr) throw profileErr;
+        currentUser = data.user;
+        await loadCurrentProfile();
+      } else {
+        const {data, error} = await supabase.auth.signInWithPassword({email, password});
+        if(error) throw error;
+        currentUser = data.user;
+        await loadCurrentProfile();
+      }
+      renderHeader();
+      await loadData();
+      showView(currentProfile ? 'profile' : 'gallery', {studentId: currentProfile ? currentProfile.id : null});
+    } catch(err){
+      errBox.textContent = err.message || '문제가 발생했습니다. 다시 시도해주세요.';
+      errBox.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  /* ---------------- gallery ---------------- */
+  let activeFilter = 'all';
+  const filterBar = document.getElementById('filterBar');
+  filterBar.addEventListener('click', e => {
+    const btn = e.target.closest('.chip');
+    if(!btn) return;
+    activeFilter = btn.dataset.tool;
+    filterBar.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === btn));
+    renderGallery();
+  });
+
+  function waveformBars(seed, n){
+    let bars = '';
+    let s = 0;
+    for(const ch of String(seed)) s = (s*31 + ch.charCodeAt(0)) % 100;
+    for(let i=0;i<n;i++){
+      s = (s*17 + i*7) % 100;
+      const h = 25 + (s % 75);
+      bars += `<span style="height:${h}%"></span>`;
+    }
+    return bars;
+  }
+
+  function projectCard(p, opts){
+    opts = opts || {};
+    const student = students.find(s => s.id === p.studentId);
+    const authorName = student ? student.name : '알 수 없음';
+    const primaryTool = p.tools[0] || '기타';
+    const thumbInner = p.thumbnailUrl
+      ? `<img src="${escapeHtml(p.thumbnailUrl)}" alt="${escapeHtml(p.title)} 썸네일" onerror="this.parentElement.innerHTML='<div class=&quot;thumb-fallback&quot; style=&quot;background:linear-gradient(135deg, var(--tc), #0a0a0d)&quot;>${escapeHtml(p.title)}</div>'">`
+      : `<div class="thumb-fallback" style="background:linear-gradient(135deg, var(--tc), #0a0a0d)">${escapeHtml(p.title)}</div>`;
+    const isOwner = currentProfile && currentProfile.id === p.studentId;
+    return `
+      <div class="card ${toolClass(primaryTool)}" data-project="${p.id}">
+        ${isOwner && !opts.hideOwnerControls ? `
+        <div class="card-owner-controls">
+          <button class="icon-btn" data-edit="${p.id}" title="수정">✎</button>
+          <button class="icon-btn danger" data-delete="${p.id}" title="삭제">✕</button>
+        </div>` : ''}
+        <div class="thumb">
+          ${thumbInner}
+          <div class="scan"></div>
+          <div class="play-hint">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" stroke="white" stroke-width="1.4" fill="rgba(0,0,0,0.3)"/><path d="M10 8.5L16 12L10 15.5V8.5Z" fill="white"/></svg>
+          </div>
+          ${p.duration ? `<div class="duration mono">${escapeHtml(p.duration)}</div>` : ''}
+        </div>
+        <div class="card-body">
+          <div class="ctitle">${escapeHtml(p.title)}</div>
+          <a href="#" class="cauthor" data-author="${p.studentId}">${escapeHtml(authorName)}</a>
+          <div class="tags">${p.tools.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('')}</div>
+          <div class="waveform ${toolClass(primaryTool)}">${waveformBars(p.id, 28)}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderGallery(){
+    const grid = document.getElementById('galleryGrid');
+    const empty = document.getElementById('galleryEmpty');
+    const filtered = activeFilter === 'all' ? projects : projects.filter(p => p.tools.includes(activeFilter));
+    document.getElementById('statProjects').textContent = projects.length;
+    document.getElementById('statStudents').textContent = students.length;
+    if(filtered.length === 0){
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      empty.querySelector('h3').textContent = projects.length === 0 ? '아직 업로드된 작품이 없습니다' : '해당 카테고리로 작업한 작품이 아직 없습니다';
+      empty.querySelector('p').textContent = projects.length === 0
+        ? '로그인 후 첫 작품을 올려서 갤러리를 시작해보세요.'
+        : '다른 필터를 선택하거나 새 작품을 업로드해보세요.';
+      return;
+    }
+    empty.style.display = 'none';
+    grid.innerHTML = filtered.slice().reverse().map(p => projectCard(p)).join('');
+  }
+
+  function handleGridClick(e){
+    const authorLink = e.target.closest('[data-author]');
+    if(authorLink){ e.preventDefault(); showView('profile', {studentId: authorLink.dataset.author}); return; }
+    const editBtn = e.target.closest('[data-edit]');
+    if(editBtn){ e.stopPropagation(); showView('upload', {editId: editBtn.dataset.edit}); return; }
+    const delBtn = e.target.closest('[data-delete]');
+    if(delBtn){ e.stopPropagation(); deleteProject(delBtn.dataset.delete); return; }
+    const card = e.target.closest('.card');
+    if(card){ showView('detail', {projectId: card.dataset.project}); }
+  }
+  document.getElementById('galleryGrid').addEventListener('click', handleGridClick);
+  document.getElementById('profileGrid').addEventListener('click', handleGridClick);
+  document.getElementById('emptyUploadBtn').addEventListener('click', () => {
+    showView(currentProfile ? 'upload' : 'auth', {mode:'login'});
+  });
+
+  /* ---------------- upload / edit ---------------- */
+  let selectedTools = new Set();
+  const toolSelect = document.getElementById('toolSelect');
+  toolSelect.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if(!chip) return;
+    const t = chip.dataset.tool;
+    if(selectedTools.has(t)){ selectedTools.delete(t); chip.classList.remove('active'); }
+    else { selectedTools.add(t); chip.classList.add('active'); }
+  });
+
+  function renderUploadPrelude(editId){
+    editingProjectId = editId || null;
+    const errBox = document.getElementById('uploadFormError');
+    const noteBox = document.getElementById('uploadFormNote');
+    errBox.style.display = 'none';
+    noteBox.style.display = 'none';
+    document.getElementById('uploadForm').reset();
+    selectedTools.clear();
+    toolSelect.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+
+    if(!currentProfile){
+      document.getElementById('uploadHeading').textContent = '로그인이 필요합니다';
+      document.getElementById('uploadAsLabel').textContent = '작품을 업로드하려면 먼저 로그인하거나 회원가입해주세요.';
+      document.getElementById('uploadForm').style.display = 'none';
+      return;
+    }
+    document.getElementById('uploadForm').style.display = 'block';
+
+    if(editingProjectId){
+      const p = projects.find(x => x.id === editingProjectId);
+      document.getElementById('uploadHeading').textContent = '작품 수정';
+      document.getElementById('uploadAsLabel').textContent = `"${p.title}" 작품을 수정합니다.`;
+      document.getElementById('uploadSubmitBtn').textContent = '수정 완료';
+      document.getElementById('upTitle').value = p.title;
+      document.getElementById('upDesc').value = p.description || '';
+      document.getElementById('upVideo').value = p.videoUrl || '';
+      document.getElementById('upThumb').value = p.thumbnailUrl || '';
+      document.getElementById('upDuration').value = p.duration || '';
+      p.tools.forEach(t => {
+        selectedTools.add(t);
+        const chip = toolSelect.querySelector(`[data-tool="${t}"]`);
+        if(chip) chip.classList.add('active');
+      });
+    } else {
+      document.getElementById('uploadHeading').textContent = '작품 업로드';
+      document.getElementById('uploadAsLabel').textContent = `현재 "${currentProfile.name}" 프로필로 새 작품을 등록합니다.`;
+      document.getElementById('uploadSubmitBtn').textContent = '작품 게시';
+    }
+  }
+
+  async function uploadThumbnailIfNeeded(){
+    const fileInput = document.getElementById('upThumbFile');
+    const file = fileInput.files && fileInput.files[0];
+    if(!file) return null;
+    const path = `${currentUser.id}/${Date.now()}_${file.name.replace(/\s+/g,'_')}`;
+    const {error} = await supabase.storage.from('thumbnails').upload(path, file, {upsert:true});
+    if(error) throw error;
+    const {data} = supabase.storage.from('thumbnails').getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  document.getElementById('uploadForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const errBox = document.getElementById('uploadFormError');
+    errBox.style.display = 'none';
+    if(!isConfigured){
+      errBox.textContent = 'Supabase가 아직 설정되지 않았습니다. 파일 하단의 SUPABASE_URL / SUPABASE_ANON_KEY를 먼저 입력해주세요.';
+      errBox.style.display = 'block';
+      return;
+    }
+    if(!currentProfile){
+      errBox.textContent = '먼저 로그인해주세요.';
+      errBox.style.display = 'block';
+      return;
+    }
+    const title = document.getElementById('upTitle').value.trim();
+    if(!title){
+      errBox.textContent = '작품 제목을 입력해주세요.';
+      errBox.style.display = 'block';
+      return;
+    }
+    const submitBtn = document.getElementById('uploadSubmitBtn');
+    submitBtn.disabled = true;
+    try{
+      let thumbnailUrl = document.getElementById('upThumb').value.trim();
+      const uploadedUrl = await uploadThumbnailIfNeeded();
+      if(uploadedUrl) thumbnailUrl = uploadedUrl;
+
+      const payload = {
+        title,
+        description: document.getElementById('upDesc').value.trim(),
+        video_url: document.getElementById('upVideo').value.trim(),
+        thumbnail_url: thumbnailUrl,
+        duration: document.getElementById('upDuration').value.trim(),
+        tools: selectedTools.size ? Array.from(selectedTools) : ['기타']
+      };
+
+      let savedId = editingProjectId;
+      if(editingProjectId){
+        const {error} = await supabase.from('projects').update(payload).eq('id', editingProjectId);
+        if(error) throw error;
+      } else {
+        payload.student_id = currentProfile.id;
+        const {data, error} = await supabase.from('projects').insert(payload).select().single();
+        if(error) throw error;
+        savedId = data.id;
+      }
+      await loadData();
+      showView('detail', {projectId: savedId});
+    } catch(err){
+      errBox.textContent = err.message || '저장 중 문제가 발생했습니다.';
+      errBox.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  async function deleteProject(id){
+    if(!confirm('이 작품을 삭제할까요? 되돌릴 수 없습니다.')) return;
+    const {error} = await supabase.from('projects').delete().eq('id', id);
+    if(error){ alert(error.message); return; }
+    await loadData();
+    showView('gallery');
+  }
+
+  /* ---------------- student profile view ---------------- */
+  function renderProfile(studentId){
+    const student = students.find(s => s.id === studentId);
+    const head = document.getElementById('profileHead');
+    if(!student){
+      head.innerHTML = '<p>학생을 찾을 수 없습니다.</p>';
+      document.getElementById('profileGrid').innerHTML = '';
+      return;
+    }
+    const c = colorFor(student.id);
+    head.innerHTML = `
+      <div class="avatar" style="background:${c}">${initials(student.name)}</div>
+      <div>
+        <h2>${escapeHtml(student.name)}</h2>
+        ${student.bio ? `<div class="bio">${escapeHtml(student.bio)}</div>` : ''}
+        <div class="profile-meta">${projects.filter(p=>p.studentId===student.id).length}개 작품 등록됨</div>
+      </div>`;
+    const own = projects.filter(p => p.studentId === student.id);
+    const grid = document.getElementById('profileGrid');
+    const empty = document.getElementById('profileEmpty');
+    if(own.length === 0){
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      grid.innerHTML = own.slice().reverse().map(p => projectCard(p)).join('');
+    }
+  }
+
+  /* ---------------- project detail view ---------------- */
+  function renderDetail(projectId){
+    const p = projects.find(x => x.id === projectId);
+    if(!p) return;
+    const student = students.find(s => s.id === p.studentId);
+    const embed = toEmbedUrl(p.videoUrl);
+    document.getElementById('detailVideo').innerHTML = embed
+      ? `<iframe src="${embed}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+      : `<div class="no-video">등록된 영상 링크가 없거나 지원하지 않는 형식입니다.<br>YouTube 또는 Vimeo 링크를 사용해주세요.</div>`;
+    document.getElementById('detailTitle').textContent = p.title;
+    const authorEl = document.getElementById('detailAuthor');
+    authorEl.textContent = '@ ' + (student ? student.name : '알 수 없음');
+    authorEl.onclick = (e) => { e.preventDefault(); showView('profile', {studentId: p.studentId}); };
+    document.getElementById('detailTags').innerHTML = p.tools.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('');
+    document.getElementById('detailDesc').textContent = p.description || '등록된 설명이 없습니다.';
+    document.getElementById('detailDate').textContent = p.createdAt ? new Date(p.createdAt).toLocaleDateString('ko-KR') : '—';
+    document.getElementById('detailDuration').textContent = p.duration || '—';
+
+    const ownerActions = document.getElementById('detailOwnerActions');
+    const isOwner = currentProfile && currentProfile.id === p.studentId;
+    ownerActions.style.display = isOwner ? 'flex' : 'none';
+    if(isOwner){
+      document.getElementById('detailEditBtn').onclick = () => showView('upload', {editId: p.id});
+      document.getElementById('detailDeleteBtn').onclick = () => deleteProject(p.id);
+    }
+  }
+
+  /* ---------------- init ---------------- */
+  (async function init(){
+    await initAuth();
+    await loadData();
+  })();
+})();
+</script>
+</body>
+</html>
